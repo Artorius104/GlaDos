@@ -21,8 +21,8 @@ jobs:
 
     - name: Build
       run: |
-        sudo docker build -t glados .
-        sudo docker run -it glados bash
+        docker build -t glados .
+        docker run -it glados bash
         make
 
     - name: Unit Tests
