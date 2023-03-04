@@ -19,6 +19,11 @@ jobs:
     - name: Stack permissions bug workaround
       run: "chown -R $(id -un):$(id -gn) ~"
       
+    - name: Install Docker
+      run: |
+        apt-get update
+        apt-get install docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+      
     - name: Login to Docker Hub
       uses: docker/login-action@v2
       with:
