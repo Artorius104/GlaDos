@@ -29,8 +29,8 @@ jobs:
         sudo apt install apt-transport-https curl gnupg-agent ca-certificates software-properties-common -y
         curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -
         sudo add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu focal stable"
-        sudo apt-get install -y --allow-downgrades docker-ce=5:20.10.23~3-0~ubuntu-focal
-        sudo apt install docker-ce-cli containerd.io -y
+        sudo apt-get install apparmor
+        sudo apt install docker-ce docker-ce-cli containerd.io -y
         chmod +x start.sh
         ./start.sh
       shell: bash
