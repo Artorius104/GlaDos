@@ -1,0 +1,52 @@
+name: Haskell CD
+
+on:
+  push:
+    branches:
+      - master
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    container:
+      image: haskell:latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v3
+
+      - name: Build
+        run: stack build
+
+      - name: Upload Release
+        uses: actions/upload-artifact@v1
+        if: always()
+        with:
+          name: glados-exe
+          path: glados-exe
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download project build
+        uses: actions/download-artifact@v1
+        with:
+          name: glados-exe
+
+      - name: Compress project build
+        run: zip -r -j glados.zip glados
+
+      - name: Create Release
+        id: create_release
+        uses: actions/create-release@v1
+        with:
+          prerelease: false
+
+      - name: Upload Release
+        id: upload_release
+        uses: actions/upload-release-asset@v1
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./glados.zip
+          asset_name: glados.zip
+          asset_content_type: application/zip

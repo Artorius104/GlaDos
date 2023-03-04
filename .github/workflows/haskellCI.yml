@@ -4,32 +4,26 @@ on:
   push:
   pull_request:
 
-permissions:
-  contents: read
-
 jobs:
   build:
 
-    name: Build code base
+    name: Build Code Base
     runs-on: ubuntu-latest
+    container:
+      image: haskell:latest
 
     steps:
-    - name: Checkout code 
+    - name: Checkout Code 
       uses: actions/checkout@v3
-
-    - name: Setup Haskell
-      uses: actions/setup-haskell@v1
-      with:
-        ghc-version: '8.10.3'
-        enable-stack: true
-        stack-version: 'latest'
-    
-    - name: Install dependencies
-      run: |
-        stack update
-        
-    - name: Get libgmp
-      run: sudo apt update && sudo apt install libgmp-dev -y
 
     - name: Build
       run: stack build
+
+    - name: Unit Tests
+      run: stack test > unit_tests_res
+      
+    - name: Create Artifact
+      uses: actions/upload-artifact@v1
+      with:
+        name: unit_tests_res
+        path: unit_tests_res
