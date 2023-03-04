@@ -18,7 +18,7 @@ jobs:
         run: "chown -R $(id -un):$(id -gn) ~"
 
       - name: Build
-        run: stack build
+        run: stack build --install-ghc --allow-different-user
 
       - name: Upload Release
         uses: actions/upload-artifact@v1
