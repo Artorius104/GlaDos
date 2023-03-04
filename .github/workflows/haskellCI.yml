@@ -25,7 +25,7 @@ jobs:
 
     - name: Build
       run: |
-        apt-get install docker
+        sudo apt-get install docker
         docker build -t glados .
         docker run -it glados bash
         make
