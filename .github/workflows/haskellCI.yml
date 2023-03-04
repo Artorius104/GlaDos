@@ -18,9 +18,13 @@ jobs:
       
     - name: Stack permissions bug workaround
       run: "chown -R $(id -un):$(id -gn) ~"
+      
+    - name: Set up Docker
+      uses: docker/setup-docker@v2
 
     - name: Build
       run: |
+        apt-get install docker
         docker build -t glados .
         docker run -it glados bash
         make
