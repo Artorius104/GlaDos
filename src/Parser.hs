@@ -2,6 +2,7 @@ module Parser(
         Ast(..),
         Parser,
         stringToAst,
+        Name
 ) where
 
 import Control.Applicative

@@ -26,5 +26,9 @@ re: fclean all
 test: all
 	./test.bash
 
+bin:
+	llc LLVM.IR -o LLVM.s
+	gcc LLVM.s -o a.out
+
 .PHONY: all clean fclean re
 
