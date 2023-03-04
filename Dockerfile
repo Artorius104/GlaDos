@@ -8,5 +8,6 @@ RUN apt-get update && apt-get install -y wget
 RUN apt-get -y install llvm-9-dev curl libnuma-dev
 RUN wget -qO- https://get.haskellstack.org/ | sh
 
-
 RUN stack setup --resolver=lts-18.10 --install-ghc
+
+CMD [ "make ; ", "./glados", " test/test_0.scm/test_0.scm"]
