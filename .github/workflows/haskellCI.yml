@@ -20,7 +20,10 @@ jobs:
       run: "chown -R $(id -un):$(id -gn) ~"
 
     - name: Build
-      run: stack build --install-ghc --allow-different-user
+      run: |
+        sudo docker build -t glados .
+        sudo docker run -it glados bash
+        make
 
     - name: Unit Tests
       run: stack test > unit_tests_res
