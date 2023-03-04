@@ -1,0 +1,35 @@
+name: Haskell CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+
+    name: Build code base
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code 
+      uses: actions/checkout@v3
+
+    - name: Setup Haskell
+      uses: actions/setup-haskell@v1
+      with:
+        ghc-version: '8.10.3'
+        enable-stack: true
+        stack-version: 'latest'
+    
+    - name: Install dependencies
+      run: |
+        stack update
+        
+    - name: Get libgmp
+      run: sudo apt update && sudo apt install libgmp-dev -y
+
+    - name: Build
+      run: stack build
