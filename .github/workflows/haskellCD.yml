@@ -8,17 +8,20 @@ on:
 jobs:
   build:
     runs-on: ubuntu-20.04
-    container:
-      image: haskell:latest
     steps:
       - name: Checkout Code
         uses: actions/checkout@v3
-        
-      - name: Stack permissions bug workaround
-        run: "chown -R $(id -un):$(id -gn) ~"
 
       - name: Build
-        run: stack build --install-ghc --allow-different-user
+        run: |
+          sudo apt update
+          sudo apt install apt-transport-https curl gnupg-agent ca-certificates software-properties-common -y
+          curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -
+          sudo add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu focal stable"
+          sudo apt install docker-ce docker-ce-cli containerd.io -y
+          sudo docker build -t glados .
+          sudo docker run glados
+        shell: sh
 
       - name: Upload Release
         uses: actions/upload-artifact@v1
@@ -37,7 +40,7 @@ jobs:
           name: glados-exe
 
       - name: Compress project build
-        run: zip -r -j glados.zip glados
+        run: zip -r -j glados.zip glados-exe
 
       - name: Create Release
         id: create_release
