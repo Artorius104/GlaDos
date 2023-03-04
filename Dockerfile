@@ -10,4 +10,4 @@ RUN wget -qO- https://get.haskellstack.org/ | sh
 
 RUN stack setup --resolver=lts-18.10 --install-ghc
 
-CMD [ "make ; ", "./glados", " test/test_0.scm/test_0.scm"]
+CMD [ "/usr/bin/make ; ", "./glados", " test/test_0.scm/test_0.scm"]
