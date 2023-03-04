@@ -26,16 +26,13 @@ jobs:
     - name: Build
       run: |
         sudo apt update
-        chmod +x entrypoint.sh
-        git add entrypoint.sh
-        git commit
         sudo apt install apt-transport-https curl gnupg-agent ca-certificates software-properties-common -y
         curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -
         sudo add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu focal stable"
         sudo apt install docker-ce docker-ce-cli containerd.io -y
         sudo docker build -t glados .
         sudo docker run glados
-      shell: bash
+      shell: sh
 
     - name: Unit Tests
       run: stack test > unit_tests_res
