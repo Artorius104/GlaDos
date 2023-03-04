@@ -22,13 +22,19 @@ jobs:
           sudo docker build -t glados .
           sudo docker run glados
         shell: sh
+        
+      - name: Create Release
+        id: create_release
+        uses: actions/create-release@v1
+        with:
+          prerelease: false
 
       - name: Upload Release
         uses: actions/upload-artifact@v1
         if: always()
         with:
-          name: glados-exe
-          path: glados-exe
+          name: glados
+          path: glados
 
   release:
     needs: build
@@ -37,10 +43,10 @@ jobs:
       - name: Download project build
         uses: actions/download-artifact@v1
         with:
-          name: glados-exe
+          name: glados
 
       - name: Compress project build
-        run: zip -r -j glados.zip glados-exe
+        run: zip -r -j glados.zip glados
 
       - name: Create Release
         id: create_release
