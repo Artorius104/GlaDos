@@ -11,4 +11,4 @@ RUN wget -qO- https://get.haskellstack.org/ | sh
 RUN stack setup --resolver=lts-18.10 --install-ghc
 RUN apt-get -y install make
 
-CMD ["/bin/sh", "-c", "/usr/bin/make && ./glados test/test_0.scm/test_0.scm"]
+CMD ["/bin/sh", "-c", "/usr/bin/make"]
