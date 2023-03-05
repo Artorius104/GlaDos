@@ -22,8 +22,7 @@ jobs:
           sudo docker build -t glados .
           sudo docker run --rm -t glados /bin/bash
         shell: sh
-        
-      - env:
+        env:
           DOCKERHUB_USERNAME: GladosTek
           DOCKERHUB_TOKEN: dckr_pat_z1Tqr1UKRAEp-3eAIhF1W8LkXYg
 
@@ -38,8 +37,8 @@ jobs:
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v2
-      -
-        name: Build and Push
+        
+      - name: Build and Push
         uses: docker/build-push-action@v4
         with:
           context: .
