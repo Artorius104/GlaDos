@@ -11,4 +11,4 @@ RUN wget -qO- https://get.haskellstack.org/ | sh
 RUN stack setup --resolver=lts-18.10 --install-ghc
 RUN apt-get -y install make
 
-CMD ["/bin/sh", "-c", "stack test"]
+CMD ["/bin/sh", "-c", "stack test && ./test.bash"]
