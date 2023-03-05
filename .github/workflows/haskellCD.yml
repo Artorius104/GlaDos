@@ -26,6 +26,9 @@ jobs:
       - name: Run ls -la
         run: ls -la
         
+      - name: Test Make
+        run: make
+        
       - name: Upload Artifact
         uses: actions/upload-artifact@v3
         with:
