@@ -37,6 +37,7 @@ jobs:
         uses: actions/download-artifact@v3
         with:
           name: glados
+          path: ./glados
 
       - name: Compress project build
         run: zip -r -j glados.zip glados-artifact
