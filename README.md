@@ -30,7 +30,7 @@ $ ./glados file1 file2 file3...
 **Entry Point:** Each file ***need*** to have a main function which must be defined and called in the file.
 
 **Variables:** Variables are declared using the def keyword, followed by the variable name and the value.  
-For example, ```def x = 42" declares a variable x with the value 42```.
+For example, ```x = 42" declares a variable x with the value 42```.
 
 **Arithmetic expressions:** It supports basic arithmetic operations such as addition, subtraction, multiplication, and division.  
 For example, ```5 + 3 * 4" equals to 17```.

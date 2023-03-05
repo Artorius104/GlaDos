@@ -1,3 +1,14 @@
-x = add (a, b) {a + b}
+def fact(x) {
+  if (x == 1) {
+    1
+  }
+  else {
+    x * fact(x-1)
+  }
+}
 
-x(3, 4)
+def main() {
+  fact(10)
+}
+
+main()

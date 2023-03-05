@@ -1,0 +1,15 @@
+; ModuleID = 'entry'
+source_filename = "<string>"
+
+define i32 @main() {
+entry:
+  %0 = mul i32 2, 5
+  %1 = icmp eq i32 %0, 11
+  ret i1 %1
+}
+
+define i32 @mainentry() {
+entry:
+  %0 = call i32 @main()
+  ret i32 %0
+}

@@ -1,2 +1,8 @@
-def add (a, b) {a + b}
-add(1, 2)
+def main()
+{
+  if (1 > 5) {
+    1
+  }
+}
+
+main()

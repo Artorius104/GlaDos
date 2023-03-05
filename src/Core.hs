@@ -1,11 +1,9 @@
 module Core(
-    mainLoop,
     executeFile,
     exe
 ) where
 
 
-import Ast(AssignedSymbols, printMaybeAst, evalAST,)
 import Parser(Ast(..), Parser, stringToAst)
 import Data.Char()
 import Data.Maybe()
@@ -17,60 +15,63 @@ import Control.Exception(try, SomeException, evaluate)
 import Data.List(isPrefixOf)
 
 
-mainLoop :: IO ()
-mainLoop = loopAst empty
+--mainLoop :: IO ()
+--mainLoop = loopAst empty
 
-loopAst :: AssignedSymbols -> IO()
-loopAst symbs = do
-    input <- getLine
-    if input == "quit" || input == "exit"
-        then return ()
-        else do
-            putStrLn "Parsed: "
-            let parse = Nothing
-            printMaybeAst parse "Error in parsing"
-            putStrLn "Executed: "
-            case parse of
-                Nothing -> loopAst symbs
-                Just ast -> do
-                    let (res, newSymbs) = evalAST (ast, symbs)
-                    printMaybeAst res "Error in execution"
-                    loopAst newSymbs
+--loopAst :: AssignedSymbols -> IO()
+--loopAst symbs = do
+--    input <- getLine
+--    if input == "quit" || input == "exit"
+--        then return ()
+--        else do
+--            putStrLn "Parsed: "
+--            let parse = Nothing
+--            printMaybeAst parse "Error in parsing"
+--            putStrLn "Executed: "
+--            case parse of
+--                Nothing -> loopAst symbs
+--                Just ast -> do
+--                    let (res, newSymbs) = evalAST (ast, symbs)
+--                    printMaybeAst res "Error in execution"
+--                    loopAst newSymbs
+--
+--executeLines :: [String] -> AssignedSymbols -> IO()
+--executeLines (line:rest) symbs = do
+--    let maybeAst = Nothing
+--    case maybeAst of
+--        Just ast -> do
+--            let (res, newSimbs) = evalAST (ast, symbs)
+--            printMaybeAst res "Error in execution"
+--            executeLines rest newSimbs
+--        _ -> return ()
+--executeLines _ _ = return ()
+--
+--getFirstSmartLine :: String -> Bool -> (String, String)
+--getFirstSmartLine (a:xs) notFirst
+--    | a == '\n' && (not (null xs) && head xs /= ' ') && not notFirst = getFirstSmartLine xs True
+--    | notFirst = let (first, other) = getFirstSmartLine xs True
+--       in (first, a:other)
+--    | not notFirst = let (first, other) = getFirstSmartLine xs False
+--       in (a:first, other)
+--getFirstSmartLine _ _ = ("", "")
+--
+--smartLines :: String -> [String]
+--smartLines [] = []
+--smartLines str = let (first, rest) = getFirstSmartLine str False
+--    in first : smartLines rest
 
-executeLines :: [String] -> AssignedSymbols -> IO()
-executeLines (line:rest) symbs = do
-    let maybeAst = Nothing
-    case maybeAst of
-        Just ast -> do
-            let (res, newSimbs) = evalAST (ast, symbs)
-            printMaybeAst res "Error in execution"
-            executeLines rest newSimbs
-        _ -> return ()
-executeLines _ _ = return ()
 
-getFirstSmartLine :: String -> Bool -> (String, String)
-getFirstSmartLine (a:xs) notFirst
-    | a == '\n' && (not (null xs) && head xs /= ' ') && not notFirst = getFirstSmartLine xs True
-    | notFirst = let (first, other) = getFirstSmartLine xs True
-       in (first, a:other)
-    | not notFirst = let (first, other) = getFirstSmartLine xs False
-       in (a:first, other)
-getFirstSmartLine _ _ = ("", "")
+m :: String -> String
+m [] = "LLVM"
+m s = s
 
-smartLines :: String -> [String]
-smartLines [] = []
-smartLines str = let (first, rest) = getFirstSmartLine str False
-    in first : smartLines rest
+exe :: [Ast]-> String -> IO ()
+exe ast name = do
+    _ <- codegen initModule ast name
+    putStrLn (m name  ++ ".IR Builded")
 
-exe :: [Ast] -> String -> IO ()
-exe mod name = do
-    ast <- codegen initModule mod name
-    putStrLn "./LLVM.IR Builded"
-
-executeFile :: String -> String -> IO()
+executeFile :: [String] -> String -> IO()
 executeFile filepath name = do
-    content <- readFile filepath
-    res <- try $ evaluate $ (exe (stringToAst content) name) :: IO (Either SomeException (IO()))
-    case res of
-        Left err -> if (isPrefixOf "Empty input." (show err)) then return () else putStrLn $ "\x1b[31mError:\x1b[0m " ++ show err
-        Right ast -> exe (stringToAst content)
+    content <- mapM readFile filepath
+    print content
+    exe (stringToAst (unwords content)) name

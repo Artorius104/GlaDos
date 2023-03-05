@@ -1,5 +1,6 @@
 def main() {
-  foo * 42
+  1 / 0;
+  1
 }
 
 main()

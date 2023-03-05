@@ -7,14 +7,21 @@ nb_test_files=${#files[@]}
 GREEN='\033[0;32m'
 RED='\033[0;31m'
 
+
 for ((i=0; i < $nb_test_files; i++))
 do
+echo "-----------------------------------------------"
+
     test_result=$(./glados ./test/test_files/${files[i]})
-    if [ "$test_result" == "./LLVM.IR Builded" ]
+    ret=$?
+    if [ -z "$ret" ]
     then
-        test=$(make bin; ./a.out)
-    else
         continue
+
+    else
+        make -S rebin
+        ./bin
+        test=$(echo $?)
     fi
 
     real_result=$(cat ./test/answer_files/${answer[i]})
@@ -23,8 +30,8 @@ do
         echo -e "${GREEN}Test $i passed${GREEN}"
     else
         echo -e "${RED}Test $i failed${RED}"
-        echo -e "${RED}RES:\n$test_result${RED}"
-        echo -e "${RED}EXPECTED:\n$real_result${RED}"
+        echo -e "${RED}RES:\n${test}{RED}"
+        echo -e "${RED}EXPECTED:\n${real_result}${RED}"
     fi
 
 done

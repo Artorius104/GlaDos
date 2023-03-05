@@ -20,14 +20,13 @@ import qualified LLVM.AST.FloatingPointPredicate as FP
 import Control.Monad.Except
 import qualified LLVM.AST.IntegerPredicate as IP
 import qualified Data.Map as Map
-import Data.ByteString.Short (toShort)
 import LLVM.AST.AddrSpace (AddrSpace(AddrSpace))
-import LLVM.AST (Definition(GlobalDefinition))
-import qualified LLVM.AST as C
-import Control.Monad.RWS (gets)
+import Data.ByteString.Short (toShort, fromShort, ShortByteString, unpack)
+import Data.Char (chr)
+
 
 one = cons $ C.Float (F.Double 1.0)
-zero = cons $ C.Float (F.Double 0.0)
+zero = cons $ C.Int 32 0
 false = zero
 true = one
 
@@ -35,10 +34,10 @@ initModule :: AST.Module
 initModule = emptyModule "entry"
 
 toSig :: [String] -> [(AST.Type, AST.Name)]
-toSig = map (\x -> (double, AST.Name (toShort $ stringToByte x)))
+toSig = map (\x -> (int, AST.Name (toShort $ stringToByte x)))
 
-
-
+shortByteToString :: ShortByteString -> String
+shortByteToString = map (chr . fromIntegral) . unpack
 
 astStringToString :: P.Ast -> String
 astStringToString (P.String s) = s
@@ -55,15 +54,16 @@ codegenTop (P.Function name args body) = do
       forM_ args $ \a -> do
         var <- alloca int
         assign (astStringToString a) var
-        mapM compileAst (init body)
+        store var (local (AST.mkName (astStringToString a)) int)
+      mapM compileAst (init body)
       compileAst (last body) >>= ret
 
 codegenTop (P.Extern name args) = do
-  external double name fnargs
+  external int name fnargs
   where fnargs = toSig [astStringToString args]
 
 codegenTop exp = do
-  define int "main" [] blks
+  define int "mainentry" [] blks
   where
     blks = createBlocks $ execCodegen $ do
       entry <- addBlock entryBlockName
@@ -71,99 +71,29 @@ codegenTop exp = do
       compileAst exp >>= ret
 
 
--- mainBlockExists :: LLVM Bool
--- mainBlockExists = do
---   state <- gets cstate
---   let blocksMap = getBlock
---   return $ Map.member "main" blocksMap
+allocateVar :: String -> Codegen AST.Operand
+allocateVar name = do
+  var <- alloca int
+  assign name var
+  return var
 
+lt :: AST.Operand -> AST.Operand -> Codegen AST.Operand
+lt a b = instr (AST.ICmp IP.ULT a b []) True
 
--------------------------------------------------------------------------------
--- Operations
--------------------------------------------------------------------------------
+gt :: AST.Operand -> AST.Operand  -> Codegen AST.Operand
+gt a b = instr (AST.ICmp IP.UGT a b []) True
 
-lt :: AST.Operand -> AST.Operand -> String -> Codegen AST.Operand
-lt a b "Float" = do
-  test <- fcmp FP.ULT a b
-  uitofp double test
-lt a b "Double" = do
-  test <- fcmp FP.ULT a b
-  uitofp double test
-lt a b "Int" = do
-  test <- instr $ AST.ICmp IP.ULT a b []
-  uitofp int test
-lt _ _ _ = error "Invalid type for comparison"
+lte :: AST.Operand -> AST.Operand -> Codegen AST.Operand
+lte a b = instr (AST.ICmp IP.ULE a b []) True
 
-gt :: AST.Operand -> AST.Operand -> String -> Codegen AST.Operand
-gt a b "Float" = do
-  test <- fcmp FP.UGT a b
-  uitofp float test
-gt a b "Double" = do
-  test <- fcmp FP.UGT a b
-  uitofp double test
-gt a b "Int" = do
-  test <- instr $ AST.ICmp IP.UGT a b []
-  uitofp int test
-gt _ _ _ = error "Invalid type for comparison"
+gte :: AST.Operand -> AST.Operand -> Codegen AST.Operand
+gte a b = instr (AST.ICmp IP.UGE a b []) True
 
+eq :: AST.Operand -> AST.Operand -> Codegen AST.Operand
+eq a b = instr (AST.ICmp IP.EQ a b []) True
 
-lte :: AST.Operand -> AST.Operand -> String -> Codegen AST.Operand
-lte a b "Float" = do
-  test <- fcmp FP.ULE a b
-  uitofp double test
-lte a b "Double" = do
-  test <- fcmp FP.ULE a b
-  uitofp double test
-lte a b "Int" = do
-  test <- instr $ AST.ICmp IP.ULE a b []
-  uitofp int test
-lte _ _ _ = error "Invalid type for comparison"
-
-gte :: AST.Operand -> AST.Operand -> String -> Codegen AST.Operand
-gte a b "Float" = do
-  test <- fcmp FP.UGE a b
-  uitofp double test
-gte a b "Double" = do
-  test <- fcmp FP.UGE a b
-  uitofp double test
-gte a b "Int" = do
-  test <- instr $ AST.ICmp IP.UGE a b []
-  uitofp int test
-gte _ _ _ = error "Invalid type for comparison"
-
-eq :: AST.Operand -> AST.Operand -> String -> Codegen AST.Operand
-eq a b "Float" = do
-  test <- fcmp FP.OEQ a b
-  uitofp double test
-eq a b "Double" = do
-  test <- fcmp FP.OEQ a b
-  uitofp double test
-eq a b "Int" = do
-  test <- instr $ AST.ICmp IP.EQ a b []
-  uitofp int test
-eq _ _ _ = error "Invalid type for comparison"
-
-neq :: AST.Operand -> AST.Operand -> String -> Codegen AST.Operand
-neq a b "Float" = do
-  test <- fcmp FP.ONE a b
-  uitofp double test
-neq a b "Double" = do
-  test <- fcmp FP.ONE a b
-  uitofp double test
-neq a b "Int" = do
-  test <- instr $ AST.ICmp IP.NE a b []
-  uitofp int test
-neq _ _ _ = error "Invalid type for comparison"
-
-fand :: AST.Operand -> AST.Operand -> String -> Codegen AST.Operand
-fand a b _ = do
-  test <- instr $ AST.ICmp IP.EQ a b []
-  uitofp int test
-
-ffor :: AST.Operand -> AST.Operand -> String -> Codegen AST.Operand
-ffor a b _ = do
-  test <- instr $ AST.ICmp IP.NE a b []
-  uitofp int test
+neq :: AST.Operand -> AST.Operand -> Codegen AST.Operand
+neq a b = instr (AST.ICmp IP.NE a b []) True
 
 
 binops = Map.fromList [
@@ -177,8 +107,6 @@ binops = Map.fromList [
     , (">", gt)
     , (">=", gte)
     , ("<=", lte)
-    , ("&&", fand)
-    , ("||", ffor)
   ]
 
 assignValue :: String -> P.Ast -> Codegen AST.Operand
@@ -188,15 +116,14 @@ assignValue var val = do
   _ <- store a cval
   return cval
 
-
 externReference :: AST.Type -> AST.Name -> AST.Operand
 externReference ty nm = AST.ConstantOperand (C.GlobalReference ty nm)
 
 
 applyOp :: AST.Operand -> AST.Operand -> P.Name -> String -> Codegen AST.Operand
-applyOp a b op t = do
+applyOp a b op _ = do
   case Map.lookup op binops of
-    Just f -> f a b t
+    Just f -> f a b
     Nothing -> error "Invalid operation"
 
 makeOp :: P.Ast -> P.Ast -> P.Name -> Codegen AST.Operand
@@ -227,10 +154,12 @@ compileAst :: P.Ast -> Codegen AST.Operand
 compileAst (P.UnaryOp op a) = do
   compileAst $ P.Call ("unary" ++ op) [a]
 compileAst (P.BinaryOp "=" (P.String var) val) = assignValue var val
+compileAst (P.BinaryOp "=" (P.Symbol var) val) = assignValue var val
 
 compileAst (P.BinaryOp op a b) = makeOp a b op
 
 compileAst (P.String x) = getvar x >>= load
+compileAst (P.Symbol x) = getvar x >>= load
 
 compileAst (P.Float n) = return $ AST.ConstantOperand $ C.Float (F.Double n)
 
@@ -239,31 +168,31 @@ compileAst (P.Int n) = return $ AST.ConstantOperand $ C.Int 32 (toInteger n)
 compileAst (P.Boolean b) = return $ if b then true else false
 
 -- compileAst (P.Call "print" args) = do
---   let formatStrs = map getFormatStr args
---   let printArgs = concatMap getPrintArgs args
---   let printfFunc = C.GlobalReference (T.ptr $ T.FunctionType T.double [T.ptr T.i8] True) "printf"
---   let formatStr = pure $ C.GlobalReference C.VoidType (AST.mkName "print_format_str")
---   let arg' = map (AST.ConstantOperand) printArgs 
---   _ <- call printfFunc (formatStr : toArgs printArgs)
---   write (head printArgs)
---   return $ AST.ConstantOperand $ C.Float (F.Double 0.0)
---   where
---     getFormatStr (P.Int _) = "%d"
---     getFormatStr (P.Float _) = "%f"
---     getFormatStr (P.String _) = "%s"
---     getFormatStr (P.Boolean _) = "%d"
---     getFormatStr _ = error "Invalid type for print"
+  -- let formatStrs = map getFormatStr args
+  -- let printArgs = concatMap getPrintArgs args
+  -- let printfFunc = C.GlobalReference (T.ptr $ T.FunctionType T.double [T.ptr T.i8] True) "printf"
+  -- let formatStr = pure $ C.GlobalReference C.VoidType (AST.mkName "print_format_str")
+  -- let arg' = map (AST.ConstantOperand) printArgs
+  -- _ <- call printfFunc (formatStr : toArgs printArgs)
+  -- write (head printArgs)
+  -- return $ AST.ConstantOperand $ C.Float (F.Double 0.0)
+  -- where
+  --   getFormatStr (P.Int _) = "%d"
+  --   getFormatStr (P.Float _) = "%f"
+  --   getFormatStr (P.String _) = "%s"
+  --   getFormatStr (P.Boolean _) = "%d"
+  --   getFormatStr _ = error "Invalid type for print"
 
---     getPrintArgs (P.Int n) = [C.Int 32 (toInteger n)]
---     getPrintArgs (P.Float n) = [C.Float (F.Double n)]
---     getPrintArgs (P.String n) = [C.GlobalReference C.VoidType (C.Name (toShort $ stringToByte n))]
---     getPrintArgs (P.Boolean n) = [C.Int 32 (toInteger $ if n then 1 else 0)]
---     getPrintArgs _ = error "Invalid type for print"
---     toArgs = map C.ConstantOperand
+  --   getPrintArgs (P.Int n) = [C.Int 32 (toInteger n)]
+  --   getPrintArgs (P.Float n) = [C.Float (F.Double n)]
+  --   getPrintArgs (P.String n) = [C.GlobalReference C.VoidType (C.Name (toShort $ stringToByte n))]
+  --   getPrintArgs (P.Boolean n) = [C.Int 32 (toInteger $ if n then 1 else 0)]
+  -- -   getPrintArgs _ = error "Invalid type for print"
+    -- toArgs = map C.ConstantOperand
 
 compileAst (P.Call fn args) = do
   largs <- mapM compileAst args
-  let fnctype = AST.PointerType { AST.pointerReferent = AST.FunctionType { AST.resultType = double, AST.argumentTypes = formatCallArgs args, AST.isVarArg = False} , AST.pointerAddrSpace = AddrSpace 0 }
+  let fnctype = AST.PointerType { AST.pointerReferent = AST.FunctionType { AST.resultType = int, AST.argumentTypes = formatCallArgs args, AST.isVarArg = False} , AST.pointerAddrSpace = AddrSpace 0 }
   let instr' = externReference fnctype (AST.mkName fn)
   call instr' largs
 
@@ -272,8 +201,8 @@ compileAst (P.If condExpr thenExprs elseExprs) = do
   elseB <- addBlock "if.else"
   endB <- addBlock "if.end"
   condOp <- compileAst condExpr
-  condVal <- fcmp FP.ONE false condOp
-  _ <- cbr condVal thenB elseB
+  icmp' <- instr (AST.ICmp IP.NE condOp (AST.ConstantOperand $ C.Int 32 0) []) True
+  _ <- cbr icmp' thenB elseB
 
   _ <- setBlock thenB
   mapM_ compileAst thenExprs
@@ -282,58 +211,7 @@ compileAst (P.If condExpr thenExprs elseExprs) = do
   mapM_ compileAst elseExprs
   _ <- br endB
   _ <- setBlock endB
-  return $ AST.ConstantOperand $ C.Float (F.Double 0)
-
--- compileAst (P.For init cond update body) = do
---   loopHeader <- addBlock "loop.header"
---   loopBody <- addBlock "loop.body"
---   loopEnd <- addBlock "loop.end"
--- --    -- Évaluer l'expression d'initialisation et sauter au bloc du corps de la boucle
---   _ <- compileAst init
---   br loopBody
--- --    -- Bloc du corps de la boucle
---   emitBlockStart loopBody
---   mapM_ compileAst body
---   _ <- compileAst update
---   br loopHeader
-
--- --     -- Bloc de fin de boucle
---   setBlock loopEnd
---   return $ AST.ConstantOperand $ C.Int 32 0
-
--- --     where
--- --       newBlock name = do
--- --         fn <- gets currentFunction
--- --         let cnt = length $ AST.BasicBlock fn
--- --         let block = AST.BasicBlock (AST.Name $ name ++ "." ++ show cnt) [] (AST.Do $ AST.Br (AST.Name $ name ++ "." ++ show (cnt + 1)) [])
--- --         modify $ \s -> s { Codegen.currentBlock = Just block, blocks = block : blocks s }
--- --         return block
-
---   forloop <- addBlock "for.loop"
---   forexit <- addBlock "for.exit"
---   i <- alloca double
---   istart <- compileAst ivar
---   stepval <- compileAst step
---   store i istart
---   assign init i
---   br forloop
-
---   -- -- for.loop
-
---   setBlock forloop
---   mapM_ compileAst body
---   ival <- load i
---   inext <- fadd ival stepval
---   store i inext
-
---   cond <- compileAst cond
---   test <- fcmp FP.ONE false cond
---   cbr test forloop forexit
-
---   -- -- for.exit
-
---   setBlock forexit
---   return zero
+  return $ AST.ConstantOperand $ C.Int 32 0
 
 compileAst (P.While cond body) = do
   condB <- addBlock "while.cond"
@@ -342,22 +220,19 @@ compileAst (P.While cond body) = do
   _ <- br condB
   _ <- setBlock condB
   condOp <- compileAst cond
-  condval <- fcmp FP.ONE false condOp
-  _ <- cbr condval bodyB endB
+  icmp' <- instr (AST.ICmp IP.NE condOp (AST.ConstantOperand $ C.Int 32 0) []) True
+  _ <- cbr icmp' bodyB endB
   _ <- setBlock bodyB
   mapM_ compileAst body
   _ <- br condB
   _ <- setBlock endB
   return $ AST.ConstantOperand $ C.Int 32 0
 
-compileAst (P.Symbol x) = getvar x >>= load
-
 compileAst e = error $ "Not implemented: " ++ show e
 
 
 formatCallArgs :: [P.Ast] -> [AST.Type]
-formatCallArgs = Prelude.map (\e -> double)
-
+formatCallArgs = Prelude.map (\e -> int)
 
 
 liftError :: ExceptT String IO a -> IO a

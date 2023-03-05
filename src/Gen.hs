@@ -17,13 +17,14 @@ import qualified LLVM.AST.Constant as C
 import qualified LLVM.AST.Attribute as A
 import qualified LLVM.AST.CallingConvention as CC
 import qualified LLVM.AST.FloatingPointPredicate as FP
-
+import qualified LLVM.AST.IntegerPredicate as IP
 import qualified Data.ByteString.Char8 as B
 import Data.ByteString.Short (toShort, fromShort)
 import LLVM.AST.AddrSpace (AddrSpace(AddrSpace))
 import qualified LLVM.AST.Float as C
 import LLVM.IRBuilder (int32)
-
+import LLVM.Internal.Value (typeOf)
+import LLVM.Internal.DecodeAST (DecodeAST(unDecodeAST))
 
 type SymbolTable = [(String, Operand)]
 
@@ -160,21 +161,26 @@ execCodegen :: Codegen a -> CodegenState
 execCodegen m = execState (runCodegen m) emptyCodegen
 
 
-
 fresh :: Codegen Word
 fresh = do
   i <- gets count
   modify $ \s -> s { count = 1 + i }
   return $ i + 1
 
-instr :: Instruction -> Codegen Operand
-instr ins = do
+instr :: Instruction -> Bool -> Codegen Operand
+instr ins b = do
   n <- fresh
   let ref = UnName n
   blk <- current
   let i = stack blk
-  modifyBlock (blk { stack = (ref := ins) : i } )
-  return $ local ref float
+  if not b
+    then do
+      modifyBlock (blk { stack = Do ins : i } )
+      return $ local ref VoidType
+    else do
+      modifyBlock (blk { stack = (ref := ins) : i } )
+      return $ local ref int
+
 
 terminator :: Named Terminator -> Codegen (Named Terminator)
 terminator trm = do
@@ -226,6 +232,7 @@ assign var x = do
   lcls <- gets symtab
   modify $ \s -> s { symtab = (var, x) : lcls }
 
+
 getvar :: String -> Codegen Operand
 getvar var = do
   syms <- gets symtab
@@ -242,53 +249,48 @@ global n t = C.GlobalReference t n
 externf :: Name -> Type -> Operand
 externf n t = ConstantOperand (C.GlobalReference t n)
 
-fadd :: Operand -> Operand -> String -> Codegen Operand
--- fadd a b "Float" = instr $ FAdd noFastMathFlags a b []
-fadd a b "Double" = instr $ FAdd noFastMathFlags a b []
-fadd a b "Int" = instr $ Add False False a b []
-fadd _ _ _ = error "fadd: unsupported type"
+fadd :: Operand -> Operand -> Codegen Operand
+fadd a b = instr  (Add False False a b []) True
 
-fsub :: Operand -> Operand -> String -> Codegen Operand
--- fsub a b "Float" = instr $ FSub noFastMathFlags a b []
-fsub a b "Double" = instr $ FSub noFastMathFlags a b []
-fsub a b "Int" = instr $ Sub False False a b []
-fsub _ _ _ = error "fsub: unsupported type"
+fsub :: Operand -> Operand -> Codegen Operand
+fsub a b = instr  (Sub False False a b []) True
 
-fmul :: Operand -> Operand -> String -> Codegen Operand
+fmul :: Operand -> Operand -> Codegen Operand
 -- fmul a b "Float" = instr $ FMul noFastMathFlags a b []
-fmul a b "Double" = instr $ FMul noFastMathFlags a b []
-fmul a b "Int" = instr $ Mul False False a b []
-fmul _ _ _ = error "fmul: unsupported type"
+fmul a b = instr (Mul False False a b []) True
 
-fdiv :: Operand -> Operand -> String -> Codegen Operand
--- fdiv a b "Float" = instr $ FDiv noFastMathFlags a b []
-fdiv a b "Double" = instr $ FDiv noFastMathFlags a b []
-fdiv a b "Int" = instr $ SDiv False a b []
-fdiv _ _ _ = error "fdiv: unsupported type"
+fdiv :: Operand -> Operand -> Codegen Operand
+fdiv a b = instr  (SDiv False a b []) True
 
-fcmp :: FP.FloatingPointPredicate -> Operand -> Operand -> Codegen Operand
-fcmp cond a b = instr $ FCmp cond a b []
+
+icmp ::  IP.IntegerPredicate -> Operand -> Operand -> Codegen Operand
+icmp p a b = instr (ICmp p a b []) True
+
+-- icmp :: IP.IntegerPredicate -> Operand -> Operand -> Codegen Operand
+-- icmp pred a b = do
+--   aType <- typeOf a
+--   bType <- typeOf b
+--   unless (aType == bType) $ error "Les deux opérandes ne sont pas de même type"
+--   instr (ICmp pred a b [])
+
 
 cons :: C.Constant -> Operand
 cons = ConstantOperand
-
-uitofp :: Type -> Operand -> Codegen Operand
-uitofp ty a = instr $ UIToFP a ty []
 
 toArgs :: [Operand] -> [(Operand, [A.ParameterAttribute])]
 toArgs = map (\x -> (x, []))
 
 call :: Operand -> [Operand] -> Codegen Operand
-call fn args = instr $ Call Nothing CC.C [] (Right fn) (toArgs args) [] []
+call fn args = instr ( Call Nothing CC.C [] (Right fn) (toArgs args) [] []) True
 
 alloca :: Type -> Codegen Operand
-alloca ty = instr $ Alloca ty Nothing 0 []
+alloca ty = instr ( Alloca ty Nothing 0 [] ) True
 
 store :: Operand -> Operand -> Codegen Operand
-store ptr val = instr $ Store False ptr val Nothing 0 []
+store ptr val = instr ( Store False ptr val Nothing 0 []) False
 
 load :: Operand -> Codegen Operand
-load ptr = instr $ Load False ptr Nothing 0 []
+load ptr = instr (Load False ptr Nothing 0 [] ) True
 
 br :: Name -> Codegen (Named Terminator)
 br val = terminator $ Do $ Br val []

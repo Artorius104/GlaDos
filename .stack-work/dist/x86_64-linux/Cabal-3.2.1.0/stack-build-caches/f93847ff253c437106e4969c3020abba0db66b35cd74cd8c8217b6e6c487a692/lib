@@ -1,0 +1,24 @@
+/home/artorius/.ghcup/ghc/8.10.7/lib/ghc-8.10.7/include/ghcversion.h:
+  hash: c013160c9aa8a98f4638616496dce720c23ceca8ef9d6b3212b654642fbda5e4
+? /home/artorius/Delivery/Tek3/FUNC/B-FUN-500-PAR-5-2-glados-sacha.lliso/.stack-work/dist/x86_64-linux/Cabal-3.2.1.0/build/autogen/Paths_glados.hs
+: hash: 61bde37b50a8472261b30da08996775e857b560321636f8a704c232b2e04eddf
+? /home/artorius/Delivery/Tek3/FUNC/B-FUN-500-PAR-5-2-glados-sacha.lliso/.stack-work/dist/x86_64-linux/Cabal-3.2.1.0/build/autogen/cabal_macros.h
+: hash: 88175f1cb5fa31846ad302dabc41385f86a9af3b5713c4645dd2f042e52e6833
+/home/artorius/Delivery/Tek3/FUNC/B-FUN-500-PAR-5-2-glados-sacha.lliso/CHANGELOG.md:
+  hash: 4d85df12512a6ad5ddd9945f0107001cb66a4e7dc1eb4c74ed8c092ebead7622
+/home/artorius/Delivery/Tek3/FUNC/B-FUN-500-PAR-5-2-glados-sacha.lliso/README.md:
+  hash: cbffaef87fbbdade5ff508c13956d06475a74527218e0e76ef5215e791c5b67e
+/home/artorius/Delivery/Tek3/FUNC/B-FUN-500-PAR-5-2-glados-sacha.lliso/glados.cabal:
+  hash: 4dc39853f1292095079ab998d172605f704643ef23d4d871959c449c6f45071f
+/home/artorius/Delivery/Tek3/FUNC/B-FUN-500-PAR-5-2-glados-sacha.lliso/package.yaml:
+  hash: 454b9800069b499683d9cf8116125459adc60f93714de9d4b4113cf970798582
+/home/artorius/Delivery/Tek3/FUNC/B-FUN-500-PAR-5-2-glados-sacha.lliso/src/Ast.hs:
+  hash: af4e3cc2361c4cd19cccddf7aae54cb04520726300513a825c7cba6641516419
+/home/artorius/Delivery/Tek3/FUNC/B-FUN-500-PAR-5-2-glados-sacha.lliso/src/Core.hs:
+  hash: 365ccc8f0538c8aabe1510c747d2fdc51adb917c716b088b4b455b84c9ce1e1d
+/home/artorius/Delivery/Tek3/FUNC/B-FUN-500-PAR-5-2-glados-sacha.lliso/src/Lexer.hs:
+  hash: d0d13bc101d046610f40e92821139c0be97a4d0eaf97d295bdad3b573166cee3
+/home/artorius/Delivery/Tek3/FUNC/B-FUN-500-PAR-5-2-glados-sacha.lliso/src/Parser.hs:
+  hash: db42758ebeb7cc5816eb1a8d8ebadf27172d120562b6d2f15808dbb265373d9d
+/usr/include/stdc-predef.h:
+  hash: cb08cd5d4cc059a90833ac48a284d25016e8d56ded8ad4cd98d8ac59cc5053f3

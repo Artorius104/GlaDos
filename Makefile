@@ -27,8 +27,12 @@ test: all
 	./test.bash
 
 bin:
-	llc LLVM.IR -o LLVM.s
-	gcc LLVM.s -o a.out
+	@llc LLVM.IR -o bin.s
+	@gcc -o bin bin.s
+
+rebin :
+	@rm -f bin bin.s
+	@make bin
 
 .PHONY: all clean fclean re
 

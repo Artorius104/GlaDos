@@ -7,4 +7,8 @@ def fact(x) {
   }
 }
 
-fact(10)
+def main() {
+  fact(10)
+}
+
+main()
