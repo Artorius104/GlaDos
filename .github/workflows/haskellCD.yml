@@ -23,24 +23,23 @@ jobs:
           sudo docker run glados
         shell: sh
 
-      - name: Upload Release
-        uses: actions/upload-artifact@v1
-        if: always()
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v3
         with:
-          name: glados
-          path: glados
+          name: glados-artifact
+          path: ./glados
 
   release:
     needs: build
     runs-on: ubuntu-latest
     steps:
-      - name: Download project build
+      - name: Download Artifact
         uses: actions/download-artifact@v1
         with:
-          name: glados
+          name: glados-artifact
 
       - name: Compress project build
-        run: zip -r -j glados.zip glados
+        run: zip -r -j glados.zip glados-artifact
 
       - name: Create Release
         id: create_release
