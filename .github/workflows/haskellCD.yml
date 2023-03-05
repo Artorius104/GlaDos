@@ -62,3 +62,4 @@ jobs:
           asset_path: ./glados.zip
           asset_name: glados.zip
           asset_content_type: application/zip
+          token: ${{ secrets.GLADOS }}
