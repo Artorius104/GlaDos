@@ -35,10 +35,18 @@ jobs:
       shell: sh
 
     - name: Unit Tests
-      run: stack test > unit_tests_res
+      run: |
+        stack test > unit_tests_res
+        ./test.bash > func_tests_res
       
-    - name: Create Artifact
-      uses: actions/upload-artifact@v1
+    - name: Create Unit Tests Artifact
+      uses: actions/upload-artifact@v3
       with:
         name: unit_tests_res
         path: unit_tests_res
+
+    - name: Create Functional Tests Artifact
+      uses: actions/upload-artifact@v3
+      with:
+        name: func_tests_res
+        path: func_tests_res
