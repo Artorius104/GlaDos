@@ -1,13 +1,15 @@
-name: Haskell CD
+name: Haskell-CD
 
 on:
-  push:
-    branches:
-      - main
+  workflow_run:
+    workflows: [Haskell-CI]
+    types:
+      - completed
 
 jobs:
   build:
     runs-on: ubuntu-20.04
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
     steps:
       - name: Checkout Code
         uses: actions/checkout@v3
@@ -23,9 +25,6 @@ jobs:
           sudo docker run -t glados
         shell: sh
 
-      - name: Run ls -la
-        run: ls -la
-        
       - name: Login to Docker Hub
         uses: docker/login-action@v2
         with:
@@ -34,8 +33,6 @@ jobs:
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v2
-        env:
-          PROJECT: glados-release
         
       - name: Build and Push
         uses: docker/build-push-action@v4
@@ -43,4 +40,4 @@ jobs:
           context: .
           file: ./Dockerfile
           push: true
-          tags: gladostek/$PROJECT:latest
+          tags: gladostek/glados-release:latest
