@@ -22,9 +22,6 @@ jobs:
           sudo docker build -t glados .
           sudo docker run --rm -t glados /bin/bash
         shell: sh
-        env:
-          DOCKERHUB_USERNAME: GladosTek
-          DOCKERHUB_TOKEN: dckr_pat_z1Tqr1UKRAEp-3eAIhF1W8LkXYg
 
       - name: Run ls -la
         run: ls -la
@@ -32,8 +29,8 @@ jobs:
       - name: Login to Docker Hub
         uses: docker/login-action@v2
         with:
-          username: $DOCKER_USERNAME
-          password: $DOCKER_TOKEN
+          username: GladosTek
+          password: dckr_pat_z1Tqr1UKRAEp-3eAIhF1W8LkXYg
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v2
@@ -44,4 +41,4 @@ jobs:
           context: .
           file: ./Dockerfile
           push: true
-          tags: $DOCKER_USERNAME/glados:latest
+          tags: gladostek/glados:latest
