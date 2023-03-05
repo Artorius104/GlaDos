@@ -22,41 +22,27 @@ jobs:
           sudo docker build -t glados .
           sudo docker run --rm -t glados /bin/bash
         shell: sh
+        
+      - env:
+          DOCKERHUB_USERNAME: GladosTek
+          DOCKERHUB_TOKEN: dckr_pat_z1Tqr1UKRAEp-3eAIhF1W8LkXYg
 
       - name: Run ls -la
         run: ls -la
         
-      - name: Upload Artifact
-        uses: actions/upload-artifact@v3
+      - name: Login to Docker Hub
+        uses: docker/login-action@v2
         with:
-          name: glados
-          path: ./glados
+          username: $DOCKER_USERNAME
+          password: $DOCKER_TOKEN
 
-  release:
-    needs: build
-    runs-on: ubuntu-latest
-    steps:
-      - name: Download Artifact
-        uses: actions/download-artifact@v3
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+      -
+        name: Build and Push
+        uses: docker/build-push-action@v4
         with:
-          name: glados
-          path: ./glados
-
-      - name: Compress project build
-        run: zip -r -j glados.zip glados-artifact
-
-      - name: Create Release
-        id: create_release
-        uses: actions/create-release@v1
-        with:
-          prerelease: false
-
-      - name: Upload Release
-        id: upload_release
-        uses: actions/upload-release-asset@v1
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./glados.zip
-          asset_name: glados.zip
-          asset_content_type: application/zip
-          token: ${{ secrets.GLADOS }}
+          context: .
+          file: ./Dockerfile
+          push: true
+          tags: $DOCKER_USERNAME/glados:latest
