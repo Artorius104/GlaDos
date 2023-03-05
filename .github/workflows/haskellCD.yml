@@ -1,10 +1,13 @@
 name: Haskell-CD
 
 on:
-  workflow_run:
-    workflows: [Haskell-CI]
-    types:
-      - completed
+  push:
+    branches:
+      - master
+#  workflow_run:
+#    workflows: [Haskell-CI]
+#    types:
+#      - completed
 
 jobs:
   build:
