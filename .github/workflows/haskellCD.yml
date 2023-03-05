@@ -26,7 +26,7 @@ jobs:
       - name: Upload Artifact
         uses: actions/upload-artifact@v3
         with:
-          name: glados-artifact
+          name: glados
           path: ./glados
 
   release:
@@ -36,7 +36,7 @@ jobs:
       - name: Download Artifact
         uses: actions/download-artifact@v3
         with:
-          name: glados-artifact
+          name: glados
 
       - name: Compress project build
         run: zip -r -j glados.zip glados-artifact
