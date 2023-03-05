@@ -67,7 +67,7 @@ getWhile = Parser (\s -> case s of
 --- For ---
 
 getForCondition :: [Cpt] -> Int -> [Ast] -> Maybe ([Ast], [Cpt])
-getForCondition [] index res = if index == 3 then Just (res, []) else Just (res ++ [Null], [])
+getForCondition [] index res = if index == 2 then Just (res ++ [Null], []) else Just(res, [])
 getForCondition s index res = case s of
   (Separator ';' : xs) -> if length res == 0 then getForCondition xs (index + 1) (res ++ [Null]) else getForCondition xs (index + 1) res
   (s) -> case runParser singleOperate s of
@@ -95,18 +95,24 @@ getFor = Parser (\s -> case s of
 
 --- Function ---
 
-getFuncConditions :: [Cpt] -> [Ast] -> Maybe ([Ast], [Cpt])
-getFuncConditions [] res = Just (res, [])
-getFuncConditions s res = case s of
-  (Separator ',' : xs) -> getFuncConditions xs res
+getFuncConditions :: [Cpt] -> Int-> [Ast] -> Maybe ([Ast], [Cpt])
+getFuncConditions [] index res = if length res == 0
+                                 then Just (res, [])
+                                 else if index == (length res) - 1
+                                      then Just (res, [])
+                                      else if length res == index
+                                           then error "Invalid Function arguments: To much \',\' in function arguments."
+                                           else error "Invalid Function arguments: \',\' need to be used for muliples arguments."
+getFuncConditions s index res = case s of
+  (Separator ',' : xs) -> getFuncConditions xs (index + 1) res
   (s) -> case runParser singleOperate s of
-    Just (res2, rest) -> getFuncConditions rest (res ++ [res2])
+    Just (res2, rest) -> getFuncConditions rest index (res ++ [res2])
     _ -> Nothing
 
 getFunction :: Parser Ast
 getFunction = Parser (\s -> case s of
     (LSymbol "def": LSymbol x: List y: List z:xs) -> case checkMultipleDefinitions y 0 ',' of
-      True -> case getFuncConditions y [] of
+      True -> case getFuncConditions y 0 [] of
         Just (res, rest) -> case runParser operate z of
           Just (res2, rest) -> Just (Function x res res2, xs)
           _ -> Nothing
@@ -189,6 +195,7 @@ isValidValue :: Ast -> Bool
 isValidValue (Int _) = True
 isValidValue (Float _) = True
 isValidValue (String _) = True
+isValidValue (Symbol _) = True
 isValidValue (BinaryOp _ _ _) = True
 isValidValue (UnaryOp _ _) = True
 isValidValue (Call _ _) = True
@@ -198,17 +205,26 @@ isValidValue _ = False
 
 --- BinaryOp ---
 
-getValues :: Cpt -> [Cpt] -> Maybe ((Ast, Ast), [Cpt])
-getValues x xs = case runParser singleOperate [x] of
+getValues :: [Cpt] -> [Cpt] -> Maybe ((Ast, Ast), [Cpt])
+getValues x xs = case runParser singleOperate x of
       Just (res, rest) -> case runParser singleOperate xs of
-        Just (res2, rest2) -> if (isValidValue res) && (isValidValue res2) then Just ((res, res2), rest2) else Nothing
+        Just (res2, rest2) ->  Just ((res, res2), rest2)
         _ -> Nothing
       _ -> Nothing
 
 
 getBinaryOp :: Parser Ast
 getBinaryOp = Parser (\s -> case s of
-    (x: Operator y:xs) -> case getValues x xs of
+    (List x: Operator y:List z:xs) -> case getValues x z of
+      Just((res, res1), rest) -> Just (BinaryOp y res res1, xs)
+      _ -> Nothing
+    (x: Operator y:List z:xs) -> case getValues [x] z of
+      Just((res, res1), rest) -> Just (BinaryOp y res res1, xs)
+      _ -> Nothing
+    (List x: Operator y:xs) -> case getValues x xs of
+      Just((res, res1), rest) -> Just (BinaryOp y res res1, rest)
+      _ -> Nothing
+    (x: Operator y:xs) -> case getValues [x] xs of
       Just((res, res1), rest) -> Just (BinaryOp y res res1, rest)
       _ -> Nothing
     _ -> Nothing)
@@ -220,7 +236,7 @@ getBinaryOp = Parser (\s -> case s of
 getCall :: Parser Ast
 getCall = Parser (\s -> case s of
   (LSymbol x: List y:xs) -> case checkMultipleDefinitions y 0 ',' of
-    True -> case getFuncConditions y [] of
+    True -> case getFuncConditions y 0 [] of
       Just (res, rest) -> Just (Call x res, xs)
       _ -> Nothing
     False -> error "Invalid Call arguments: Multiple definitions of \',\'."
@@ -292,7 +308,7 @@ stringToAst :: String -> [Ast]
 stringToAst s = case checkString (cleanString s) of
   Just a -> case lexer a of
     tokens -> case astParser tokens of
-      ast -> ast
+      ast -> if checkMain ast [] then ast else error "Invalid input: No entry point defined. You must define a main."
       _ -> []
     _ -> []
   Nothing -> []
@@ -323,6 +339,34 @@ getMatching (x:xs) index
 
 ---Ast Errors ---
 
+getMultipleMainDef :: [Ast]-> Int -> Int -> (Int, Int)
+getMultipleMainDef [] funcIndex callIndex = if funcIndex == 0 && callIndex == 0
+                                            then (-1, 0)
+                                            else if funcIndex == 1 && callIndex == 1
+                                                 then (0, 0)
+                                                 else if funcIndex > callIndex
+                                                      then (1, funcIndex)
+                                                      else (2, callIndex)
+getMultipleMainDef (x:xs) funcIndex callIndex = case x of
+  Function "main" _ _ -> getMultipleMainDef xs (funcIndex + 1) callIndex
+  Call "main" _ -> getMultipleMainDef xs funcIndex (callIndex + 1)
+  _ -> getMultipleMainDef xs funcIndex callIndex
+
+checkMain :: [Ast] -> [Ast] -> Bool
+checkMain [] [] = False
+checkMain [] res = case getMultipleMainDef res 0 0 of
+  (-1, 0) -> error "Invalid input: No entry point defined. You must define a main."
+  (0, 0) -> True
+  (1, i) -> case i of
+    1 -> error "Invalid input: No entry point called. main is defined but never called."
+    _ -> error "Invalid input: Multiple entry points defined. You must define only one main."
+  (2, j) -> case j of
+    1 -> error "Invalid input: No entry point defined. You must define a main."
+    _ -> error "Invalid input: Multiple call of main. Main can be called only once."
+checkMain (x:xs) res = case x of
+  Function "main" _ _ -> checkMain xs (x:res)
+  Call "main" _ -> checkMain xs (x:res)
+  _ -> checkMain xs res
 
 checkForConditions :: Ast -> Int -> [Ast] -> Bool
 checkForConditions a index arr = case index of

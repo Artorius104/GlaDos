@@ -1,2 +1,1 @@
-for (i + 5; i < 6; i ++) {
-}
+def add (a b) {a + b}

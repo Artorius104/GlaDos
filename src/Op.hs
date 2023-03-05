@@ -21,8 +21,10 @@ import Control.Monad.Except
 import qualified LLVM.AST.IntegerPredicate as IP
 import qualified Data.Map as Map
 import Data.ByteString.Short (toShort)
-import Data.Functor.Contravariant (Op(Op))
-import qualified LLVM.AST as AST.TypeKind
+import LLVM.AST.AddrSpace (AddrSpace(AddrSpace))
+import LLVM.AST (Definition(GlobalDefinition))
+import qualified LLVM.AST as C
+import Control.Monad.RWS (gets)
 
 one = cons $ C.Float (F.Double 1.0)
 zero = cons $ C.Float (F.Double 0.0)
@@ -35,35 +37,46 @@ initModule = emptyModule "entry"
 toSig :: [String] -> [(AST.Type, AST.Name)]
 toSig = map (\x -> (double, AST.Name (toShort $ stringToByte x)))
 
+
+
+
 astStringToString :: P.Ast -> String
 astStringToString (P.String s) = s
 astStringToString (P.Symbol s) = s
 
 codegenTop :: P.Ast -> LLVM ()
 codegenTop (P.Function name args body) = do
-  define double name fnargs bls
+  define int name fnargs bls
   where
-    fnargs = [(double, AST.Name (toShort $ stringToByte $ astStringToString a)) | a <- args]
-    -- fnargs = toSig $ map astStringToString args
+    fnargs = [(int, AST.mkName (astStringToString a)) | a <- args]
     bls = createBlocks $ execCodegen $ do
-      entr <- addBlock entryBlockName
-      _ <- setBlock entr
+      entry <- addBlock entryBlockName
+      _ <- setBlock entry
       forM_ args $ \a -> do
-        var <- alloca double
-        _ <- store var (local (AST.Name (toShort $ stringToByte $ astStringToString a)) double)
+        var <- alloca int
         assign (astStringToString a) var
-      mapM_ compileAst body
+        mapM compileAst (init body)
+      compileAst (last body) >>= ret
 
 codegenTop (P.Extern name args) = do
   external double name fnargs
   where fnargs = toSig [astStringToString args]
+
 codegenTop exp = do
-  define double "main" [] blks
+  define int "main" [] blks
   where
     blks = createBlocks $ execCodegen $ do
       entry <- addBlock entryBlockName
       _ <- setBlock entry
       compileAst exp >>= ret
+
+
+-- mainBlockExists :: LLVM Bool
+-- mainBlockExists = do
+--   state <- gets cstate
+--   let blocksMap = getBlock
+--   return $ Map.member "main" blocksMap
+
 
 -------------------------------------------------------------------------------
 -- Operations
@@ -175,6 +188,11 @@ assignValue var val = do
   _ <- store a cval
   return cval
 
+
+externReference :: AST.Type -> AST.Name -> AST.Operand
+externReference ty nm = AST.ConstantOperand (C.GlobalReference ty nm)
+
+
 applyOp :: AST.Operand -> AST.Operand -> P.Name -> String -> Codegen AST.Operand
 applyOp a b op t = do
   case Map.lookup op binops of
@@ -183,7 +201,7 @@ applyOp a b op t = do
 
 makeOp :: P.Ast -> P.Ast -> P.Name -> Codegen AST.Operand
 makeOp a b op = do
-  case (a,  b) of
+  case (a, b) of
     (P.Int _, P.Int _) -> do
       ca <- compileAst a
       cb <- compileAst b
@@ -200,7 +218,7 @@ makeOp a b op = do
       ca <- compileAst a
       cb <- compileAst b
       applyOp ca cb op "Double"
-    (_,_) -> do
+    (_, _) -> do
       ca <- compileAst a
       cb <- compileAst b
       applyOp ca cb op "Double"
@@ -212,38 +230,42 @@ compileAst (P.BinaryOp "=" (P.String var) val) = assignValue var val
 
 compileAst (P.BinaryOp op a b) = makeOp a b op
 
-
--- compileAst (P.Call "print" args) = do
-  -- let formatStrs = map getFormatStr args
-  -- let printArgs = concatMap getPrintArgs args
-  -- let printfFunc =  B.extern  "printf" [T.ptr T.i8]
-  -- let formatStr = pure $ C.GlobalReference $ AST.Name "print_format_str"
-  -- _ <- call printfFunc (formatStr : toArgs (map AST.ConstantOperand printArgs))
-  -- return $ AST.ConstantOperand $ C.Float (F.Double 0.0)
-  -- where
-    -- getFormatStr :: P.Ast -> Maybe AST.Operand
-    -- getFormatStr (P.Int _) = Just $ C.Array T.i8 $ map (C.Int 8 . toEnum . fromEnum) "%d"
-    -- getFormatStr (P.Float _) = Just $ C.Array T.i8 $ map (C.Int 8 . toEnum . fromEnum) "%f"
-    -- getFormatStr (P.String _) = Just $ C.Array T.i8 $ map (C.Int 8 . toEnum . fromEnum) "%s"
-    -- getFormatStr _ = Nothing
-    -- getPrintArgs :: P.Ast -> [AST.Operand]
-    -- getPrintArgs (P.Int n) = [AST.ConstantOperand $ C.GetElementPtr True (C.GlobalReference (AST.Name "int_format_str")) [AST.ConstantOperand $ C.Int 32 0, AST.ConstantOperand $ C.Int 32 0], AST.ConstantOperand $ C.Int 32 (toInteger n)]
-    -- getPrintArgs (P.Float f) = [AST.ConstantOperand $ C.GetElementPtr True (C.GlobalReference (AST.Name "float_format_str")) [AST.ConstantOperand $ C.Int 32 0, AST.ConstantOperand $ C.Int 32 0], AST.ConstantOperand $ C.Float $ F.Double f]
-    -- getPrintArgs (P.String s) = [AST.ConstantOperand $ C.GetElementPtr True (C.GlobalReference (AST.Name "string_format_str")) [AST.ConstantOperand $ C.Int 32 0, AST.ConstantOperand $ C.Int 32 0], AST.ConstantOperand $ C.GlobalReference $ AST.Name s]
-    -- getPrintArgs _ = []
-
-
 compileAst (P.String x) = getvar x >>= load
 
-compileAst (P.Float n) = return $ cons $ C.Float (F.Double n)
+compileAst (P.Float n) = return $ AST.ConstantOperand $ C.Float (F.Double n)
 
-compileAst (P.Int n) = return $ cons $ C.Int 32 (toInteger n)
+compileAst (P.Int n) = return $ AST.ConstantOperand $ C.Int 32 (toInteger n)
 
 compileAst (P.Boolean b) = return $ if b then true else false
 
+-- compileAst (P.Call "print" args) = do
+--   let formatStrs = map getFormatStr args
+--   let printArgs = concatMap getPrintArgs args
+--   let printfFunc = C.GlobalReference (T.ptr $ T.FunctionType T.double [T.ptr T.i8] True) "printf"
+--   let formatStr = pure $ C.GlobalReference C.VoidType (AST.mkName "print_format_str")
+--   let arg' = map (AST.ConstantOperand) printArgs 
+--   _ <- call printfFunc (formatStr : toArgs printArgs)
+--   write (head printArgs)
+--   return $ AST.ConstantOperand $ C.Float (F.Double 0.0)
+--   where
+--     getFormatStr (P.Int _) = "%d"
+--     getFormatStr (P.Float _) = "%f"
+--     getFormatStr (P.String _) = "%s"
+--     getFormatStr (P.Boolean _) = "%d"
+--     getFormatStr _ = error "Invalid type for print"
+
+--     getPrintArgs (P.Int n) = [C.Int 32 (toInteger n)]
+--     getPrintArgs (P.Float n) = [C.Float (F.Double n)]
+--     getPrintArgs (P.String n) = [C.GlobalReference C.VoidType (C.Name (toShort $ stringToByte n))]
+--     getPrintArgs (P.Boolean n) = [C.Int 32 (toInteger $ if n then 1 else 0)]
+--     getPrintArgs _ = error "Invalid type for print"
+--     toArgs = map C.ConstantOperand
+
 compileAst (P.Call fn args) = do
   largs <- mapM compileAst args
-  call (externf (AST.Name (toShort $ stringToByte fn)) float ) largs
+  let fnctype = AST.PointerType { AST.pointerReferent = AST.FunctionType { AST.resultType = double, AST.argumentTypes = formatCallArgs args, AST.isVarArg = False} , AST.pointerAddrSpace = AddrSpace 0 }
+  let instr' = externReference fnctype (AST.mkName fn)
+  call instr' largs
 
 compileAst (P.If condExpr thenExprs elseExprs) = do
   thenB <- addBlock "if.then"
@@ -333,14 +355,21 @@ compileAst (P.Symbol x) = getvar x >>= load
 compileAst e = error $ "Not implemented: " ++ show e
 
 
+formatCallArgs :: [P.Ast] -> [AST.Type]
+formatCallArgs = Prelude.map (\e -> double)
+
+
+
 liftError :: ExceptT String IO a -> IO a
 liftError = runExceptT >=> either fail return
 
-codegen :: AST.Module -> [P.Ast] -> IO AST.Module
-codegen mod fns = withContext $ \context ->
+codegen :: AST.Module -> [P.Ast] -> String -> IO AST.Module
+codegen mod fns fileName = withContext $ \context ->
   liftError $ liftIO $ withModuleFromAST context newast $ \m  -> do
     llstr <- moduleLLVMAssembly m
-    writeFile "./LLVM.IR" (byteToString llstr)
+    if fileName == ""
+      then writeFile "./LLVM.IR" (byteToString llstr)
+      else writeFile ("./" ++ fileName ++ ".IR") (byteToString llstr)
     return newast
   where
     modn    = mapM codegenTop fns

@@ -1,1 +1,1 @@
-[Extern "x" (UnaryOp "=" (Int 5)),Function "add" [String "a",String "b"] [Return (BinaryOp "+" (String "a") (String "b"))],Function "main" [String "argc",String "av"] [BinaryOp "=" (String "coef") (Int 5),BinaryOp "=" (String "res") (Int 0),For (BinaryOp "=" (String "i") (Int 0)) (BinaryOp "<" (String "i") (String "argc")) (UnaryOp "++" (String "i")) [If (Call "isInt" [String "coef"]) [BinaryOp "+=" (String "res") (Call "add" [String "res"])] [Call "print" [String "res"]]],Call "print" [String "res"],Return (Int 0)]]
+42

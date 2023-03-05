@@ -1,2 +1,2 @@
-for (i = 5; i < 6; print(test)) {
-}
+def add (a, b) {a + b}
+add(1, 2)

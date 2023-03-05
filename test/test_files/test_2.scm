@@ -1,2 +1,5 @@
-for (i = 5; i < 6; i ++) {
+def main() {
+  10 / 2
 }
+
+main()

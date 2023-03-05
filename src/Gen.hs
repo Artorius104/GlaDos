@@ -5,13 +5,13 @@ module Gen where
 
 import Data.List
 import Data.Function
-
 import qualified Data.Map as Map
 import Control.Monad.State
 
 import LLVM.AST
 import LLVM.AST.Global
 import qualified LLVM.AST as AST
+import qualified LLVM.AST.Type as T
 import qualified LLVM.AST.Linkage as L
 import qualified LLVM.AST.Constant as C
 import qualified LLVM.AST.Attribute as A
@@ -19,7 +19,10 @@ import qualified LLVM.AST.CallingConvention as CC
 import qualified LLVM.AST.FloatingPointPredicate as FP
 
 import qualified Data.ByteString.Char8 as B
-import Data.ByteString.Short (toShort)
+import Data.ByteString.Short (toShort, fromShort)
+import LLVM.AST.AddrSpace (AddrSpace(AddrSpace))
+import qualified LLVM.AST.Float as C
+import LLVM.IRBuilder (int32)
 
 
 type SymbolTable = [(String, Operand)]
@@ -42,12 +45,36 @@ data BlockState = BlockState {
 newtype Codegen a = Codegen { runCodegen :: State CodegenState a }
   deriving (Functor, Applicative, Monad, MonadState CodegenState )
 
-
 newtype LLVM a = LLVM (State AST.Module a)
   deriving (Functor, Applicative, Monad, MonadState AST.Module )
 
 type Names = Map.Map String Int
 
+
+builtIn :: LLVM ()
+builtIn = external (AST.IntegerType 32) "write"
+  [ (AST.IntegerType 32, AST.Name "fd")
+  , (AST.PointerType (AST.IntegerType 8) (AddrSpace 0), AST.Name "buf")
+  , (AST.IntegerType 32, AST.Name "count")
+  ]
+
+opToString :: Operand -> String
+opToString (LocalReference t name) = nameToString name
+opToString (ConstantOperand c) = constToString c
+
+nameToString :: Name -> String
+nameToString (Name n) = B.unpack $ fromShort n
+
+constToString :: C.Constant -> String
+constToString (C.Int 32 i) = show i
+constToString (C.Int 64 i) = show i
+constToString (C.Float f) = show f
+constToString (C.Float (C.Double d)) = show d
+constToString (C.GlobalReference _ (Name n)) =  B.unpack $ fromShort n
+
+
+write :: Operand -> Codegen Operand
+write str = call (externf "write" VoidType) [AST.ConstantOperand (C.Int 32 1), str, int32 (toInteger (B.length (stringToByte (opToString str))))]
 
 stringToByte :: String -> B.ByteString
 stringToByte = B.pack
@@ -61,6 +88,7 @@ runLLVM mod (LLVM m) = execState m mod
 emptyModule :: String -> AST.Module
 emptyModule label = defaultModule { moduleName = toShort $ stringToByte label }
 
+
 addDefn :: Definition -> LLVM ()
 addDefn d = do
   defs <- gets moduleDefinitions
@@ -69,7 +97,7 @@ addDefn d = do
 define ::  Type -> String -> [(Type, Name)] -> [BasicBlock] -> LLVM ()
 define retty label argtys body = addDefn $
   GlobalDefinition $ functionDefaults {
-    name        = Name (toShort $ stringToByte label)
+    name        = AST.mkName label
   , parameters  = ([Parameter ty nm [] | (ty, nm) <- argtys], False)
   , returnType  = retty
   , basicBlocks = body
@@ -78,7 +106,7 @@ define retty label argtys body = addDefn $
 external ::  Type -> String -> [(Type, Name)] -> LLVM ()
 external retty label argtys = addDefn $
   GlobalDefinition $ functionDefaults {
-    name        = Name (toShort $ stringToByte label)
+    name        = AST.mkName label
   , linkage     = L.External
   , parameters  = ([Parameter ty nm [] | (ty, nm) <- argtys], False)
   , returnType  = retty
@@ -88,8 +116,8 @@ external retty label argtys = addDefn $
 double :: Type
 double = FloatingPointType DoubleFP
 
--- string :: Type
--- string = PointerType (IntegerType 8) (addrSpace 0)
+string :: Type
+string = PointerType (IntegerType 8) (AddrSpace 0)
 
 int :: Type
 int = IntegerType 32
@@ -126,10 +154,12 @@ emptyBlock :: Int -> BlockState
 emptyBlock i = BlockState i [] Nothing
 
 emptyCodegen :: CodegenState
-emptyCodegen = CodegenState (Name (toShort $ stringToByte entryBlockName)) Map.empty [] 1 0 Map.empty
+emptyCodegen = CodegenState (AST.mkName entryBlockName) Map.empty [] 1 0 Map.empty
 
 execCodegen :: Codegen a -> CodegenState
 execCodegen m = execState (runCodegen m) emptyCodegen
+
+
 
 fresh :: Codegen Word
 fresh = do
@@ -164,11 +194,11 @@ addBlock bname = do
   let new = emptyBlock ix
       (qname, supply) = uniqueName bname nms
 
-  modify $ \s -> s { blocks = Map.insert (Name (toShort $ stringToByte qname)) new bls
+  modify $ \s -> s { blocks = Map.insert (AST.mkName qname) new bls
                    , blockCount = ix + 1
                    , names = supply
                    }
-  return (Name (toShort $ stringToByte qname))
+  return (AST.mkName qname)
 
 setBlock :: Name -> Codegen Name
 setBlock bname = do

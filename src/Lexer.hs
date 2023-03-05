@@ -179,7 +179,7 @@ cleanWhiteSpaces (x:xs)
     | otherwise = x:cleanWhiteSpaces xs
 
 operate :: Lexer [Cpt]
-operate = many (parseSymbol <|> getNum <|> getDouble <|> parseList <|> parseOperators <|> parseSeparators <|> parseString)
+operate = many (parseList <|> parseSymbol <|> getNum <|> getDouble <|> parseOperators <|> parseSeparators <|> parseString)
 
 
 

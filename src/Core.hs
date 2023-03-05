@@ -62,15 +62,15 @@ smartLines [] = []
 smartLines str = let (first, rest) = getFirstSmartLine str False
     in first : smartLines rest
 
-exe :: [Ast] -> IO ()
-exe mod = do
-    ast <- codegen initModule mod
+exe :: [Ast] -> String -> IO ()
+exe mod name = do
+    ast <- codegen initModule mod name
     putStrLn "./LLVM.IR Builded"
 
-executeFile :: String -> IO()
-executeFile fileName = do
-    content <- readFile fileName
-    res <- try $ evaluate $ exe (stringToAst content) :: IO (Either SomeException (IO()))
+executeFile :: String -> String -> IO()
+executeFile filepath name = do
+    content <- readFile filepath
+    res <- try $ evaluate $ (exe (stringToAst content) name) :: IO (Either SomeException (IO()))
     case res of
         Left err -> if (isPrefixOf "Empty input." (show err)) then return () else putStrLn $ "\x1b[31mError:\x1b[0m " ++ show err
         Right ast -> exe (stringToAst content)
