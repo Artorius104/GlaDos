@@ -33,22 +33,12 @@ jobs:
         sudo docker build -f Dockerfile.test -t glados .
       shell: sh
 
-    - name: Unit Tests
+    - name: Tests
       run: |
         sudo docker run glados
-        
-    - name: Functional Tests
-      run: |
-        ./test.bash > func_tests_res
         
     - name: Create Unit Tests Artifact
       uses: actions/upload-artifact@v3
       with:
         name: unit_tests_res
         path: unit_tests_res
-
-    - name: Create Functional Tests Artifact
-      uses: actions/upload-artifact@v3
-      with:
-        name: func_tests_res
-        path: func_tests_res
