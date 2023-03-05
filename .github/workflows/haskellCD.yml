@@ -20,7 +20,7 @@ jobs:
           sudo add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu focal stable"
           sudo apt install docker-ce docker-ce-cli containerd.io -y
           sudo docker build -t glados .
-          sudo docker run -it glados /bin/bash
+          sudo docker run -rm -t glados /bin/bash
         shell: sh
 
       - name: Run ls -la
