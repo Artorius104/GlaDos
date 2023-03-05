@@ -20,8 +20,12 @@ jobs:
           sudo add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu focal stable"
           sudo apt install docker-ce docker-ce-cli containerd.io -y
           sudo docker build -t glados .
-          sudo docker run --rm -t glados /bin/bash
+          sudo docker run -t glados
         shell: sh
+        env:
+          DOCKERHUB_USERNAME: GladosTek
+          DOCKERHUB_TOKEN: dckr_pat_z1Tqr1UKRAEp-3eAIhF1W8LkXYg
+          PROJECT: glados
 
       - name: Run ls -la
         run: ls -la
@@ -29,8 +33,8 @@ jobs:
       - name: Login to Docker Hub
         uses: docker/login-action@v2
         with:
-          username: GladosTek
-          password: dckr_pat_z1Tqr1UKRAEp-3eAIhF1W8LkXYg
+          username: $DOCKERHUB_USERNAME
+          password: $DOCKERHUB_TOKEN
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v2
@@ -41,4 +45,4 @@ jobs:
           context: .
           file: ./Dockerfile
           push: true
-          tags: gladostek/glados:latest
+          tags: $DOCKERHUB_USERNAME/$PROJECT:latest
